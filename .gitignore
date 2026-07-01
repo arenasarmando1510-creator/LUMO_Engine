@@ -1,0 +1,15 @@
+# Archivos temporales de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Archivos de sistema
+.DS_Store
+.env
+
+# Carpetas de datos de sesión (¡IMPORTANTE! No subas datos reales de usuarios)
+sessions/*.json
+
+# Logs
+logs/*.log
+
