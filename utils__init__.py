@@ -1,4 +1,4 @@
 # ============================================================
-# NOMBRE_ARCHIVO: /logic/__init__.py
+# NOMBRE_ARCHIVO: /utils/__init__.py
 # ============================================================
 # Logic module - LUMO Engine v0.9
