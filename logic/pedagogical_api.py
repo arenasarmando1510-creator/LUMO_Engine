@@ -3,7 +3,7 @@
 # ============================================================
 # ============================================================
 # pedagogical_api.py – INTERFAZ CON GEMINI API (ALMA PEDAGÓGICA)
-# LUMO ENGINE v0.9 – CONGELADO – VERSIÓN VACACIONES 2026
+# LUMO ENGINE v0.9.2– CONGELADO – VERSIÓN VACACIONES 2026
 # ============================================================
 
 import json
@@ -13,6 +13,7 @@ import time
 import hashlib
 import uuid
 import re
+import random
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
@@ -32,6 +33,12 @@ GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemin
 TIMEOUT_SEGUNDOS = 20
 MAX_RETRIES = 3
 RETRY_BACKOFF = 2
+
+# ============================================================
+# 🎚️ INTERRUPTOR DE EMOJIS (Riesgo 2 - Auditoría)
+# ============================================================
+
+USE_EMOJIS = True  # Cambiar a False para desactivar emojis globalmente
 
 # ============================================================
 # 🔥 NUEVAS FUNCIONES AUXILIARES – ALMA PEDAGÓGICA
@@ -66,9 +73,15 @@ def generar_pregunta_curiosa(tema: str) -> str:
     preguntas = {
         "Números": "¿Cuántos números crees que hay en el mundo? ¿Y si te dijera que los números también tienen secretos?",
         "Sumas": "¿Qué pasaría si sumaras todos los juguetes que tienes? ¿Te alcanzaría para llenar tu cuarto?",
+        "Restas": "Si tuvieras 10 monedas de oro y gastaras 3, ¿cuántas te quedarían? ¿Para qué las usarías?",
+        "Multiplicación": "¿Te imaginas tener 3 cajas con 5 juguetes cada una? ¿Cuántos juguetes tendrías en total?",
+        "División": "Si tuvieras 12 galletas y las compartieras con 4 amigos, ¿cuántas le tocarían a cada uno?",
         "Lectura": "¿Cuál es la palabra más bonita que conoces? ¿Por qué crees que te gusta tanto?",
+        "Escritura": "Si pudieras escribir un mensaje para ti mismo del futuro, ¿qué le dirías?",
         "Fracciones": "¿Cómo repartirías una pizza con tus amigos para que todos coman lo mismo?",
+        "Decimales": "¿Sabías que los números con punto también tienen historias? ¿Cuánto mides en metros con decimales?",
         "Álgebra": "¿Te imaginas resolver misterios usando letras y números? Como un detective matemático.",
+        "Ecuaciones": "¿Qué número es ese que si lo multiplicas por 2 te da 10? ¿Cómo lo descubrirías?",
         "default": "¿Qué te gustaría aprender mañana? Tengo un montón de aventuras guardadas para ti."
     }
     return preguntas.get(tema, preguntas["default"])
@@ -128,13 +141,22 @@ Tu mayor éxito es que el niño sienta que aprender es descubrir algo nuevo y em
     },
     "PERSONALIZADO": {
         "system_prompt": """
-Eres el PERSONAJE FAVORITO del niño. Hablas como ese personaje, con su estilo y personalidad.
+Eres el PERSONAJE FAVORITO del niño. Hablas como ese personaje, con su estilo, su energía y sus frases características.
 
 REGLAS DE ORO:
-1. ANTES DE EXPLICAR: Convierte el aprendizaje en una aventura con tu personaje.
+1. ANTES DE EXPLICAR: Convierte el aprendizaje en una aventura con tu personaje. Usa sus poderes, sus herramientas o su mundo.
+   Ejemplo: Si eres Spider-Man: "Con un gran poder viene una gran responsabilidad... y también un gran problema matemático."
+   Ejemplo: Si eres Bob Esponja: "¡Listos para aprender como si fuera un día en el Crustáceo Cascarudo!"
+
 2. ANTE UN ERROR: Usa frases características del personaje para animar.
+   Ejemplo: "¡Ups! Hasta los héroes tienen días malos. ¡Vamos por otra!"
+
 3. ANTE UN ACIERTO: Celebra como lo haría el personaje.
+   Ejemplo: "¡Eso, eso, eso! ¡Eres un verdadero héroe!"
+
 4. AL CERRAR SESIÓN: Deja una frase del personaje que invite a volver.
+   Ejemplo: "La próxima aventura te espera. ¡No faltes!"
+
 5. SI DETECTAS FRUSTRACIÓN: Usa la personalidad del personaje para bajar la tensión y simplificar.
 
 Tu mayor éxito es que el niño se sienta acompañado por alguien a quien admira.
@@ -385,18 +407,19 @@ def parsear_respuesta_gemini(respuesta: Dict, context: Dict, instruction: Dict) 
         log_error(session_id="system", error_type="parse_gemini", error_message=str(e))
         raise
 
+# ✅ VALIDAR ESTRUCTURA CON INTERRUPTOR DE EMOJIS (Riesgo 2)
 def validar_estructura_contenido(contenido: Dict) -> Dict:
     estructura_base = {
         "pedagogical_content": {
-            "visual_hook": "¡Vamos a aprender algo increíble juntos!",
-            "explanation": "Vamos a ver esto paso a paso, sin prisa. Yo te acompaño.",
-            "example": "Imagina que tienes objetos y los cuentas conmigo.",
-            "emotional_bridge": "¡Tú puedes con esto! Y yo estoy aquí para ayudarte."
+            "visual_hook": "🌟 ¡Vamos a aprender algo increíble juntos!",
+            "explanation": "🧸 Vamos a ver esto paso a paso, sin prisa. Yo te acompaño.",
+            "example": "💡 Imagina que tienes objetos y los cuentas conmigo.",
+            "emotional_bridge": "💛 ¡Tú puedes con esto! Y yo estoy aquí para ayudarte."
         },
         "assessment": {
-            "question_text": "2 + 2 = ?",
+            "question_text": "🔢 2 + 2 = ?",
             "expected_answer": "4",
-            "hint": "Observa bien los números, ¿qué pasa cuando los juntas?"
+            "hint": "👀 Observa bien los números, ¿qué pasa cuando los juntas?"
         },
         "metadata": {
             "acc_suggested": "ACC_3",
@@ -425,9 +448,34 @@ def validar_estructura_contenido(contenido: Dict) -> Dict:
             if key not in contenido["metadata"]:
                 contenido["metadata"][key] = value
     
+    # 🔥 INTERRUPTOR DE EMOJIS: si USE_EMOJIS es False, eliminar emojis
+    if not USE_EMOJIS:
+        # Eliminar emojis de los strings
+        emoji_pattern = re.compile("["
+                                   u"\U0001F600-\U0001F64F"  # emoticonos
+                                   u"\U0001F300-\U0001F5FF"  # símbolos y pictogramas
+                                   u"\U0001F680-\U0001F6FF"  # transporte y símbolos
+                                   u"\U0001F1E0-\U0001F1FF"  # banderas
+                                   u"\U00002600-\U000026FF"   # símbolos misceláneos
+                                   u"\U00002700-\U000027BF"   # dingbats
+                                   u"\U0001F900-\U0001F9FF"   # símbolos suplementarios
+                                   u"\U0001FA70-\U0001FAFF"   # símbolos adicionales
+                                   "]+", flags=re.UNICODE)
+        
+        for section in ["pedagogical_content", "assessment"]:
+            if section in contenido:
+                for key in contenido[section]:
+                    if isinstance(contenido[section][key], str):
+                        contenido[section][key] = emoji_pattern.sub('', contenido[section][key]).strip()
+    
     return contenido
 
+# ✅ GENERAR FALLBACK CON BÚSQUEDA FLEXIBLE Y SEMILLA (Riesgos 1 y 3)
 def generar_fallback_contextual(context: Dict, instruction: Dict) -> Dict:
+    # 🔥 SEMILLA PARA PRUEBAS (Riesgo 3)
+    if os.environ.get("LUMO_ENV") == "TEST":
+        random.seed(42)
+    
     student = context.get("student", {})
     curriculum = context.get("curriculum", {})
     system_state = context.get("system_state", {})
@@ -461,15 +509,49 @@ def generar_fallback_contextual(context: Dict, instruction: Dict) -> Dict:
     if not pregunta_base:
         pregunta_base = {"pregunta": "2 + 2 = ?", "respuesta": "4", "pista": "Suma los números."}
     
+    # 🔥 BÚSQUEDA FLEXIBLE DE TEMA (Riesgo 1)
+    ejemplos_por_tema = {
+        "Números": [
+            f"Imagina que tienes {random.randint(2, 8)} estrellas en tu mano y las cuentas una por una.",
+            f"Si tuvieras {random.randint(3, 9)} juguetes y alguien te regala {random.randint(2, 5)} más, ¿cuántos tendrías?"
+        ],
+        "Sumas": [
+            f"Tienes {random.randint(2, 6)} galletas y tu mamá te da {random.randint(2, 5)} más. ¿Cuántas tienes?",
+            f"Si en una mano tienes {random.randint(2, 7)} canicas y en la otra {random.randint(2, 6)}, ¿cuántas tienes en total?"
+        ],
+        "Restas": [
+            f"Tienes {random.randint(5, 12)} monedas y gastas {random.randint(1, 5)} en un dulce. ¿Cuántas te quedan?",
+            f"Si tienes {random.randint(8, 15)} globos y se te explotan {random.randint(2, 5)}, ¿cuántos te quedan?"
+        ],
+        "Multiplicación": [
+            f"Imagina que tienes {random.randint(2, 5)} cajas con {random.randint(2, 5)} juguetes cada una. ¿Cuántos juguetes son?",
+            f"Si cada amigo tiene {random.randint(2, 5)} dulces y son {random.randint(2, 5)} amigos, ¿cuántos dulces hay en total?"
+        ],
+        "Fracciones": [
+            f"Si tienes una pizza con {random.randint(6, 12)} rebanadas y te comes {random.randint(1, 4)}, ¿qué fracción te queda?",
+            f"Reparte {random.randint(8, 16)} galletas entre {random.randint(2, 4)} amigos. ¿Cuántas le tocan a cada uno?"
+        ],
+        "default": [
+            f"Imagina que tienes {random.randint(2, 8)} cosas que te gustan y las cuentas con cuidado.",
+            f"Piensa en {random.randint(3, 7)} objetos que conoces y cómo se relacionan."
+        ]
+    }
+    
+    # 🔥 Búsqueda flexible: encontrar la clave que coincida parcialmente
+    tema_encontrado = "default"
+    for key in ejemplos_por_tema.keys():
+        if key.lower() in tema.lower():
+            tema_encontrado = key
+            break
+    ejemplos_tema = ejemplos_por_tema.get(tema_encontrado, ejemplos_por_tema["default"])
+    ejemplo = random.choice(ejemplos_tema)
+    
     if acc_level == "ACC_1":
         explicacion = f"{gancho} Vamos a entender {tema} paso a paso. Todos aprendemos a nuestro ritmo. {pista_emocional}"
-        ejemplo = f"Imagina que tienes {3} objetos y necesitas contarlos. ¿Cuántos ves?"
     elif acc_level == "ACC_2":
         explicacion = f"{gancho} Vamos a repasar {tema} con calma. {pista_emocional}"
-        ejemplo = f"Piensa en {5} cosas que conoces y cómo se relacionan."
     else:
         explicacion = f"{gancho} Vamos a explorar {tema} juntos. Confío en ti. {pista_emocional}"
-        ejemplo = f"Resuelve este problema como lo harías en la vida real."
     
     return {
         "pedagogical_content": {
