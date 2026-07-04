@@ -6,6 +6,11 @@
 # ITERACIÓN 6 – OBSERVABILIDAD
 # LUMO ENGINE v0.9 – CONGELADO
 # ============================================================
+import sys
+import os
+
+# Esto le dice a Python que añada la carpeta raíz a su lista de búsqueda
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import streamlit as st
 import time
